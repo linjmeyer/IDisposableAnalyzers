@@ -1,6 +1,8 @@
 ﻿namespace IDisposableAnalyzers;
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 using Gu.Roslyn.AnalyzerExtensions;
@@ -12,6 +14,17 @@ internal static partial class Disposable
 {
     internal static bool ShouldDispose(LocalOrParameter localOrParameter, SemanticModel semanticModel, CancellationToken cancellationToken)
     {
+        var symbolDisplayFormat = new SymbolDisplayFormat(typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces);
+        var fullyQualifiedType = localOrParameter.Type.ToDisplayString(symbolDisplayFormat);
+        var ignoredTypesCsv = Environment.GetEnvironmentVariable("IDISPOSABLE_IGNORE_TYPES") ?? string.Empty;
+        var ignoredTypes = ignoredTypesCsv.Split(',');
+
+        if (fullyQualifiedType != null && ignoredTypes.Any(v => v.Equals(fullyQualifiedType, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+
         if (localOrParameter.Symbol is IParameterSymbol { RefKind: not RefKind.None })
         {
             return false;
